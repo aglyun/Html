@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI-ChatGPT人工智能模型对话</title>
+
+    <link href="https://cdn.bootcdn.net/ajax/libs/uikit/3.15.24/css/uikit.min.css" rel="stylesheet">
+    <script src="https://cdn.bootcdn.net/ajax/libs/uikit/3.15.24/js/uikit.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/uikit/3.15.24/js/uikit-icons.min.js"></script>
+
+    <script src="https://cdn.staticfile.org/twitter-bootstrap/4.3.1/js/bootstrap.min.js"></script>
+     <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.css">
+     <link href="https://cdn.staticfile.org/twitter-bootstrap/5.1.1/css/bootstrap.min.css" rel="stylesheet">
+
+    <script src="js/axios.min.js"></script>
+    <script src="js/vue-2.5.16.js"></script>
+    <script src="js/jquery-1.8.3.min.js"></script>
+    <script src="js/socket.io.js"></script>
+    <!--高亮代码输出-->
+    <link rel="stylesheet" href="code/prism.css">
+    <script src="code/prism.js"></script>
+
+</head>
+<body>
+<!--导航条-->
+<nav class="uk-navbar-container uk-margin " uk-navbar style="background: #252424" >
+    <div class="uk-navbar-center ">
+
+        <div class="uk-navbar-center-left "><div>
+            <ul class="uk-navbar-nav ">
+                <a class="uk-navbar-item uk-logo" href="#" style="color: white">ChatGPT</a>
+                <li class=""><a href="#"  class="uk-navbar-item uk-logo">了解我们</a></li>
+                <li>
+                    <a href="#">功能</a>
+                    <div class="uk-navbar-dropdown">
+                        <ul class="uk-nav uk-navbar-dropdown-nav">
+                            <li class=''><a href="#">注册</a></li>
+                            <li><a href="#">登录</a></li>
+                            <li><a href="#">购买套餐</a></li>
+                            <hr>
+                            <li><a href="#">反馈意见</a></li>
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        </div>
+        <a class="uk-navbar-item uk-logo" href="#"></a>
+    </div>
+</nav>
+
+
+<div id="app" class="uk-container uk-width-2-3">
+    <h5><b>产品介绍</b></h5>
+    <br>
+    <p style="font-size: 14px">本站使用 OpenAI 的ChatGPT模型，可用于多种场景。本站不存储用户内容，请放心使用。免费用户对话字符最多300。</p>
+    <!--连接按钮-->
+    <button  v-if="statu" @click="gpt" style="background-color: green; color: white" class="uk-icon-button uk-margin-small-right" uk-icon="reddit"></button>
+    <button  v-else="statu" @click="gpt" class="uk-icon-button uk-margin-small-right" uk-icon="reddit"></button>
+    <span style="color: white; background: green" v-if="statu">已连接</span>
+    <span style="color: white; background: red" v-else="statu">未连接</span>
+    <hr>
+
+    <div v-for="r in room_data">
+        <div class="uk-card uk-card-default uk-card-body " style="margin-top: 25px; border-radius: 15px">
+            <div class="uk-card-badge uk-label">我: </div>
+            <p style="color: gray; padding-top:10px"> {{ r.me }}</p>
+        </div>
+        <div style="text-align: center">
+            <span uk-icon="arrow-down"></span>
+            <span uk-icon="arrow-up"></span>
+        </div>
+        <div class="uk-card uk-card-default uk-card-body " style=" border-radius: 15px">
+            <div class="uk-card-badge uk-label-success" >ChatGPT: </div>
+            <div v-html="r.ai" style="font-size: 14px; color: gray">
+                {{r.ai}}
+            </div>
+            </div>
+    </div>
+
+
+  <!--加载按钮-->
+<div v-if="if_load" id="ai_load" style="text-align: center; padding-top: 20px">
+    <div class="spinner-grow text-primary" role="status" style="width: 11px; height: 11px"></div>
+    <div class="spinner-grow text-danger" role="status" style="width: 11px; height: 11px"></div>
+    <div class="spinner-grow text-warning" role="status" style="width: 11px; height: 11px"></div>
+</div>
+
+    <br>
+    <!--问题输入框 -->
+    <div class="input-group" style="padding-bottom: 5px;">
+        <textarea :disabled="val" class="form-control" aria-label="With textarea" style="height: 40px" placeholder="你想问什么（限制128个字数）" v-model="text"></textarea>
+            <button @click="send_msg" :disabled="val" id="ChatButton" type="button" class="btn btn-primary" style="border-radius: 0 5px 5px 0;" data-target="#top"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-send-fill" viewBox="0 0 16 16"><path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083l6-15Zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471-.47 1.178Z"/></svg>
+        </button>
+    </div>
+
+
+</div>
+
+
+
+<script type="module">
+    // 引入marked
+    // 全局函数
+    var socket = "";
+    // vue代码
+    var vue = new Vue({
+        el: "#app",
+        // 把data改成return的形式
+        data() {
+            return {
+                // 样式
+                lj: {color: 'white', background:'green'},
+                statu: false,    // 连接状态
+                if_load: false,  // 是否显示加载按钮
+                val: true,       // 是否激活disabled
+                room_data: [],
+                code: false,    // 显示代码模式
+                text: null,    // 输入框的文本
+
+            }
+        },
+        methods: {
+            chat: function (){
+                // 点击按钮改变文本
+                axios.post('http://127.0.0.1:5002/chat/post/demo')
+                    // 必须使用.then获取，否则无法获取数据
+                    .then(response => {
+                        console.log(response.data)
+                        this.room_data = response.data
+                    })
+            },
+
+            // 试试socket,点击gpt进行连接
+            gpt: function (){
+                if (this.statu) {
+                    this.statu = false   // 修改成false，代表断开连接
+                    socket.close()
+                    UIkit.notification({message: '断开连接...ok', status: 'danger'})
+                    this.val = true;  // 封禁按钮
+                    return 0
+                }
+                console.log("gpt函数测试成功")
+                socket = io.connect("http://127.0.0.1:5002");
+
+                // 测试成功, 函数的执行必须是Vue的实例，通过()=>即可
+                socket.on('connect',() => {
+                    console.log('连接成功ok')
+                    // 解封输入框和发送按钮
+                    this.val = false
+                    this.statu = true
+                    // 提示
+                    UIkit.notification({message: '连接成功...ok', status: 'success'})
+                })
+                // 断开连接
+                socket.on('disconnect', ()=>{
+                    socket.close()  // 关闭连接
+                })
+                // 接受ai消息
+                socket.on('demo', (data) =>{
+                    console.log("接收到到ai的回复了"+data)
+                    this.room_data.push({ai:data, me: this.text})
+                    this.val = false
+                    this.if_load = false   // 加载按钮
+                    // 清空输入框
+                    this.text = ""
+                    // 定位到最下面
+                    $('html, body').animate({scrollTop:$(document).height()}, 'slow');
+                })
+                // 接受me消息
+                socket.on('huifu', (data) => {
+                    this.val = true;
+                    this.if_load = true
+                })
+            },
+            // 点击按钮发送消息(gpt函数里面看看是否可行)
+            send_msg: function (){
+                // 发送到msg
+                socket.emit('msg', this.text);
+                console.log("发送成功")
+            }
+        },
+
+
+
+    })
+
+</script>
+</body>
+</html>
